@@ -1,0 +1,38 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: cadastro-seguro-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: cadastro_seguro
+      MYSQL_USER: cadastro
+      MYSQL_PASSWORD: ${DB_PASSWORD:-cadastro_dev}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_dev}
+    volumes:
+      - dbdata:/var/lib/mysql
+    ports:
+      - "127.0.0.1:3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: cadastro-seguro-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: mysql+pymysql://cadastro:${DB_PASSWORD:-cadastro_dev}@db:3306/cadastro_seguro?charset=utf8mb4
+      SECRET_KEY: ${SECRET_KEY:?Defina uma chave aleatória SECRET_KEY no .env do Compose}
+      COOKIE_SECURE: "false"
+    ports:
+      - "127.0.0.1:8001:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  dbdata:
